@@ -1,0 +1,55 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger: # Fires a trigger every time it commits/merges for more this pipe executes
+- main
+
+pool:
+  vmImage: ubuntu-latest
+variables:
+  directory: react-azure-demo # Variable to define a name for our directory to be use after
+
+steps:
+- task: Npm@1 
+  displayName: Npm Install
+  inputs:
+    command: 'install'
+
+- task: Npm@1
+  displayName: Build
+  inputs:
+    command: 'custom'
+    customCommand: 'run build'
+
+- task: CopyFiles@2 # Copy the files that have just been built and direct them to the Artifacts folder
+  displayName: 'Copy files'
+  inputs:
+    sourceFolder: './build' 
+    Contents: '**/*'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+    cleanTargetFolder: true
+    
+- task: ArchiveFiles@2 # Archive the build with a zip file and if it already exists it overwrites it
+  displayName: 'Archive files'
+  inputs:
+    rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'
+    includeRootFolder: false
+    archiveType: zip
+    archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+    replaceExistingArchive: true
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Build Artifacts'
+  inputs: 
+    pathtoPublish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+
+
+- task: AzureRmWebAppDeployment@4
+  inputs:
+    ConnectionType: 'AzureRM'
+    azureSubscription: 'Atirson Subscription Azure'
+    appType: 'webApp'
+    WebAppName: 'atirson'
+    packageForLinux: '$(System.ArtifactsDirectory)/$(Build.BuildId).zip'
